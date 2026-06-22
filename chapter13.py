@@ -1,3 +1,4 @@
+'''
 import urllib.request
 import xml.etree.ElementTree as ET
 
@@ -17,4 +18,22 @@ for result in counts:
     nums.append(int(result.text))
 
 print('Count:', len(nums))
+print('Sum:', sum(nums))
+
+'''
+
+
+import json
+from urllib.request import urlopen
+url = "https://py4e-data.dr-chuck.net/comments_2433813.json"
+
+data = urlopen(url).read()
+
+info = json.loads(data)
+nums = list()
+print('User count:', len(info['comments']))
+
+for i in range(len(info['comments'])):
+    nums.append(int(info['comments'][i]["count"]))
+
 print('Sum:', sum(nums))
