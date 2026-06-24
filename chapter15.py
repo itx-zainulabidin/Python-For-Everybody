@@ -1,5 +1,5 @@
 
-
+'''
 
 import email
 import sqlite3
@@ -8,9 +8,9 @@ conn = sqlite3.connect('emaildb.sqlite')
 
 cur = conn.cursor()
 
-cur.execute('''DROP TABLE IF EXISTS Counts''')
+cur.execute('DROP TABLE IF EXISTS Counts')
 
-cur.execute('''CREATE TABLE Counts (org TEXT,count INTEGER)''')
+cur.execute('CREATE TABLE Counts (org TEXT,count INTEGER)')
 
 
 fh = open('mbox-short.txt')
@@ -23,7 +23,7 @@ for line in fh:
         cur.execute('SELECT count FROM Counts WHERE org = ? ',(org,))
         row = cur.fetchone()
         if row is None:
-            cur.execute('''INSERT INTO Counts (org,count) VALUES (?,1)''',(org,))
+            cur.execute('INSERT INTO Counts (org,count) VALUES (?,1)',(org,))
         else:
             cur.execute('UPDATE Counts SET count = count + 1 WHERE org = ?',(org,))
         
@@ -52,7 +52,7 @@ conn = sqlite3.connect('trackdb.sqlite')
 cur = conn.cursor()
 
 # Make some fresh tables using executescript()
-cur.executescript('''
+cur.executescript('
 DROP TABLE IF EXISTS Artist;
 DROP TABLE IF EXISTS Genre;
 DROP TABLE IF EXISTS Album;
@@ -82,7 +82,7 @@ CREATE TABLE Track (
     genre_id  INTEGER,
     len INTEGER, rating INTEGER, count INTEGER
 );
-''')
+')
 
 handle = open('tracks.csv')
 
@@ -104,24 +104,24 @@ for line in handle:
 
     print(name, artist, album, genre, count, rating, length)
 
-    cur.execute('''INSERT OR IGNORE INTO Artist (name) 
-        VALUES ( ? )''', ( artist, ) )
+    cur.execute('INSERT OR IGNORE INTO Artist (name) 
+        VALUES ( ? )', ( artist, ) )
     cur.execute('SELECT id FROM Artist WHERE name = ? ', (artist, ))
     artist_id = cur.fetchone()[0]
 
-    cur.execute('''INSERT OR IGNORE INTO Genre (name) 
-        VALUES ( ? )''', ( genre, ) )
+    cur.execute('INSERT OR IGNORE INTO Genre (name) 
+        VALUES ( ? )', ( genre, ) )
     cur.execute('SELECT id FROM Genre WHERE name = ? ', (genre, ))
     genre_id = cur.fetchone()[0]
 
-    cur.execute('''INSERT OR IGNORE INTO Album (title, artist_id) 
-        VALUES ( ?, ? )''', ( album, artist_id ) )
+    cur.execute('INSERT OR IGNORE INTO Album (title, artist_id) 
+        VALUES ( ?, ? )', ( album, artist_id ) )
     cur.execute('SELECT id FROM Album WHERE title = ? ', (album, ))
     album_id = cur.fetchone()[0]
 
-    cur.execute('''INSERT OR REPLACE INTO Track
+    cur.execute('INSERT OR REPLACE INTO Track
         (title, album_id, genre_id, len, rating, count) 
-        VALUES ( ?, ?, ?, ?, ?, ? )''', 
+        VALUES ( ?, ?, ?, ?, ?, ? )', 
         ( name, album_id, genre_id, length, rating, count ) )
 
     conn.commit()
@@ -129,11 +129,80 @@ for line in handle:
 
 
 cur.execute(
-    '''SELECT Track.title, Artist.name, Album.title, Genre.name 
+    'SELECT Track.title, Artist.name, Album.title, Genre.name 
     FROM Track JOIN Genre JOIN Album JOIN Artist 
     ON Track.genre_id = Genre.ID and Track.album_id = Album.id 
         AND Album.artist_id = Artist.id
-    ORDER BY Artist.name LIMIT 3'''
+    ORDER BY Artist.name LIMIT 3'
 )
+
+cur.close()
+
+'''
+
+
+
+import json
+import sqlite3
+
+conn = sqlite3.connect('rosterdb.sqlite')
+cur = conn.cursor()
+
+# Do some setup
+cur.executescript('''
+DROP TABLE IF EXISTS User;
+DROP TABLE IF EXISTS Member;
+DROP TABLE IF EXISTS Course;
+
+CREATE TABLE User (
+    id     INTEGER PRIMARY KEY,
+    name   TEXT UNIQUE
+);
+
+CREATE TABLE Course (
+    id     INTEGER PRIMARY KEY,
+    title  TEXT UNIQUE
+);
+
+CREATE TABLE Member (
+    user_id     INTEGER,
+    course_id   INTEGER,
+    role        INTEGER,
+    PRIMARY KEY (user_id, course_id)
+)
+''')
+
+fname = input('Enter file name: ')
+if len(fname) < 1:
+    fname = 'roster_data.json'
+
+#   [ "Charley", "si110", 1 ],
+#   [ "Mea", "si110", 0 ],
+
+str_data = open(fname).read()
+json_data = json.loads(str_data)
+
+for entry in json_data:
+
+    name = entry[0]
+    title = entry[1]
+    role = entry[2]
+    print((name, title, role))
+
+    cur.execute('''INSERT OR IGNORE INTO User (name)
+        VALUES ( ? )''', ( name, ) )
+    cur.execute('SELECT id FROM User WHERE name = ? ', (name, ))
+    user_id = cur.fetchone()[0]
+
+    cur.execute('''INSERT OR IGNORE INTO Course (title)
+        VALUES ( ? )''', ( title, ) )
+    cur.execute('SELECT id FROM Course WHERE title = ? ', (title, ))
+    course_id = cur.fetchone()[0]
+
+    cur.execute('''INSERT OR REPLACE INTO Member
+        (user_id, course_id, role) VALUES ( ?, ?, ? )''',
+        ( user_id, course_id, role ) )
+
+    conn.commit()
 
 cur.close()
